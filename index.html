@@ -1,0 +1,110 @@
+---
+layout: default
+title: 우아숙박 - 전국 모텔·호텔·펜션·게스트하우스 찾기 (3만 곳)
+description: 전국 모텔·호텔·펜션·게스트하우스·리조트의 주소와 전화번호, 객실 수를 동네별로 확인하세요.
+---
+
+<div class="hero">
+  <h1>우아숙박 · 🏨 우리 동네 모텔·호텔·펜션 찾기</h1>
+  <p>동네 이름과 종류로 위치와 정보를 바로 확인하세요 (예: 해운대 호텔)</p>
+  <div class="search-wrap">
+    <input type="text" id="searchInput" class="search-input"
+           placeholder="예) 해운대 호텔, 강릉 펜션, 홍대 게스트하우스..."
+           autocomplete="off" aria-label="숙박업소 검색">
+    <button class="search-btn" onclick="doSearch()">🔍 검색</button>
+  </div>
+</div>
+
+<div class="page-with-sidebar">
+<div>
+<div id="search-results"></div>
+
+<div class="top-ad-bar">
+  {% include ad.html %}
+</div>
+
+<div class="section" style="padding-bottom:0;">
+  <div class="info-box">
+    💡 공공데이터에서 확인되는 <strong>{{ site.data.st_stats.total_fmt }}곳</strong>의 숙박업소(숙박업·관광숙박업)을 시도·시군구·동·종류별로 정리했습니다.
+    각 곳의 주소와 같은 동네 다른 곳을 한눈에 볼 수 있습니다.
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">🏷️ 종류별로 찾기</h2>
+  <div class="cat-btn-grid">
+    {% for c in site.data.st_stats.cats %}<a class="cat-btn" href="/cat/{{ c.slug }}/"><span class="ico">{{ c.icon }}</span>{{ c.label }}<small>전국 {{ c.count_fmt }}곳</small></a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">📍 지역별로 찾기</h2>
+  <div class="region-grid">
+    {% for d in site.data.st_stats.do_counts %}<a href="/region/{{ d.name }}/" class="region-btn"><span class="region-icon">📍</span>{{ d.name }} <span style="color:#9CA3AF;font-size:.82rem;">({{ d.count }})</span></a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">🔥 시설이 많은 지역·종류</h2>
+  <div class="chip-row">
+    {% for c in site.data.st_stats.top_combos %}<a class="chip" href="{{ c.url }}">{{ c.do }} {{ c.label }}<em>{{ c.count }}</em></a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">✅ 숙박업소 예약 전 확인하세요</h2>
+  <ul style="color:#374151;line-height:1.9;font-size:.93rem;padding-left:22px;">
+    <li>공공데이터는 폐업 신고 반영에 <strong>시차</strong>가 있어 실제 영업 여부와 다를 수 있으니 예약 전 <strong>전화 확인</strong>이 안전합니다.</li>
+    <li>요금과 빈 객실은 날짜·요일·성수기마다 크게 달라 이 사이트에는 싣지 않았습니다. <strong>숙박 예약 앱이나 업소에 직접</strong> 확인하세요.</li>
+    <li>객실 수는 등록 당시 신고 값이라 실제와 다를 수 있습니다.</li>
+    <li>미성년자 혼숙·인원 추가 요금·반려동물 동반 여부는 업소마다 달라 예약 전에 물어보세요.</li>
+  </ul>
+  <p style="margin-top:12px;"><a href="/guide/">숙박업소 고르는 요령 자세히 보기 →</a></p>
+</div>
+
+</div>
+<aside class="tool-sidebar"></aside>
+</div>
+
+<script>
+let items = null;
+
+async function loadIndex() {
+  if (items) return;
+  const resp = await fetch('/search_index.json');
+  items = await resp.json();
+  items.forEach(f => { f.h = (f.n + ' ' + f.do + ' ' + f.sg + ' ' + f.dg + ' ' + f.c).toLowerCase(); });
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  const el = document.getElementById('search-results');
+  if (!q) { el.innerHTML = ''; return; }
+  el.innerHTML = '<p style="text-align:center;padding:20px;color:#6B7280;">검색 중...</p>';
+  loadIndex().then(() => {
+    const toks = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const results = [];
+    for (const f of items) {
+      if (toks.every(t => f.h.includes(t))) { results.push(f); if (results.length >= 40) break; }
+    }
+    if (results.length === 0) {
+      el.innerHTML = '<p style="text-align:center;padding:20px;color:#6B7280;">검색 결과가 없습니다.</p>';
+      return;
+    }
+    el.innerHTML = `<div style="max-width:960px;margin:0 auto;padding:0 20px;">
+      <p style="padding:8px 0;font-size:.9rem;color:#6B7280;">"${esc(q)}" 검색 결과 ${results.length}${results.length >= 40 ? '+' : ''}개</p>
+      <ul class="office-list">${results.map(f => `<li><a href="/place/${f.s}/"><b>${esc(f.n)}</b><small>${esc(f.c)} · ${esc(f.do)} ${esc(f.sg)} ${f.dg === '기타' ? '' : esc(f.dg)}</small></a></li>`).join('')}</ul>
+    </div>`;
+    el.scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+const urlQ = new URLSearchParams(location.search).get('q');
+if (urlQ) { document.getElementById('searchInput').value = urlQ; doSearch(); }
+</script>
